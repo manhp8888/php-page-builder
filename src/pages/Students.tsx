@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import SideNav from '@/components/SideNav';
 import UserHeader from '@/components/UserHeader';
+import AddStudentModal from '@/components/AddStudentModal';
 import { Users, Star, Search, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -17,8 +18,8 @@ interface Student {
 const Students = () => {
   const [userName] = useState('Nguyễn Văn A');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const students: Student[] = [
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [students, setStudents] = useState<Student[]>([
     {
       id: 'HS001',
       name: 'Nguyễn Văn A',
@@ -43,7 +44,7 @@ const Students = () => {
         { name: 'Dã ngoại', score: 8 }
       ]
     }
-  ];
+  ]);
   
   const filteredStudents = students.filter(student => 
     student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -56,8 +57,15 @@ const Students = () => {
     return (total / student.activities.length).toFixed(1);
   };
   
-  const handleAddStudent = () => {
-    toast('Tính năng đang phát triển');
+  const handleAddStudent = (newStudent: Student) => {
+    // Kiểm tra trùng mã học sinh
+    if (students.some(student => student.id === newStudent.id)) {
+      toast.error('Mã học sinh đã tồn tại!');
+      return;
+    }
+    
+    setStudents(prev => [...prev, newStudent]);
+    toast.success('Thêm học sinh thành công!');
   };
   
   return (
@@ -82,7 +90,7 @@ const Students = () => {
               />
             </div>
             
-            <button onClick={handleAddStudent} className="btn-success flex items-center gap-1.5">
+            <button onClick={() => setIsModalOpen(true)} className="btn-success flex items-center gap-1.5">
               <Plus className="h-4 w-4" />
               <span>Thêm học sinh</span>
             </button>
@@ -131,6 +139,12 @@ const Students = () => {
             </tbody>
           </table>
         </div>
+        
+        <AddStudentModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          onAddStudent={handleAddStudent} 
+        />
       </div>
     </div>
   );
