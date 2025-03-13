@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
 export interface Activity {
-  id: number;
+  id: string;
   title: string;
   date: string;
   location: string;
@@ -23,7 +23,7 @@ export interface Activity {
 interface ActivityFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (activity: Omit<Activity, 'id'> & { id?: number }) => void;
+  onSave: (activity: Omit<Activity, 'id'> & { id?: string }) => void;
   activity?: Activity;
   mode: 'add' | 'edit';
 }
@@ -35,7 +35,7 @@ const ActivityFormModal = ({
   activity,
   mode
 }: ActivityFormModalProps) => {
-  const [formData, setFormData] = useState<Omit<Activity, 'id'> & { id?: number }>({
+  const [formData, setFormData] = useState<Omit<Activity, 'id'> & { id?: string }>({
     title: '',
     date: '',
     location: '',
