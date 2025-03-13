@@ -58,18 +58,20 @@ const Auth = () => {
         if (signUpData.user) {
           const { error: profileError } = await supabase
             .from('profiles')
-            .update({ 
+            .upsert({ 
+              id: signUpData.user.id,
               role: formData.role,
               full_name: formData.fullName 
-            })
-            .eq('id', signUpData.user.id);
+            });
             
           if (profileError) {
             console.error('Lỗi cập nhật hồ sơ:', profileError);
+            toast.error('Đã đăng ký nhưng không thể cập nhật hồ sơ: ' + profileError.message);
           }
         }
         
-        toast.success('Đăng ký thành công! Vui lòng kiểm tra email của bạn.');
+        toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
+        setIsSignUp(false);
       } else {
         // Đăng nhập
         const { error } = await supabase.auth.signInWithPassword({

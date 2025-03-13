@@ -2,6 +2,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface ProtectedRouteProps {
   allowedRoles?: string[];
@@ -35,6 +36,9 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps = {}) => {
   // Kiểm tra xem người dùng có quyền truy cập vào tuyến đường này không
   if (allowedRoles && allowedRoles.length > 0 && (!userRole || !allowedRoles.includes(userRole))) {
     console.log(`Chuyển hướng: Người dùng có vai trò ${userRole} không có quyền truy cập vào tuyến đường yêu cầu vai trò ${allowedRoles.join(', ')}`);
+    
+    toast.error(`Bạn không có quyền truy cập vào trang này với vai trò ${userRole === 'student' ? 'Học sinh' : 'Giáo viên'}`);
+    
     // Chuyển hướng học sinh đến dashboard khi họ cố gắng truy cập các tuyến đường chỉ dành cho giáo viên
     return <Navigate to="/dashboard" replace />;
   }

@@ -10,22 +10,25 @@ interface AuthContextType {
   loading: boolean;
   userRole: string | null;
   signOut: () => Promise<void>;
+  userName: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
   user: null, 
   loading: true, 
   userRole: null,
+  userName: null,
   signOut: async () => {} 
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -35,14 +38,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) {
         console.error('Lỗi khi lấy thông tin người dùng:', error);
-        return null;
+        return { role: null, fullName: null };
       }
       
       console.log('Dữ liệu hồ sơ người dùng:', data);
-      return data?.role;
+      return { 
+        role: data?.role || null,
+        fullName: data?.full_name || null
+      };
     } catch (err) {
-      console.error('Lỗi không xác định khi lấy vai trò người dùng:', err);
-      return null;
+      console.error('Lỗi không xác định khi lấy thông tin người dùng:', err);
+      return { role: null, fullName: null };
     }
   };
 
@@ -54,11 +60,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (currentUser) {
         try {
-          const role = await fetchUserRole(currentUser.id);
-          console.log('Vai trò người dùng từ getSession:', role);
+          const { role, fullName } = await fetchUserProfile(currentUser.id);
+          console.log('Thông tin người dùng từ getSession:', { role, fullName });
           setUserRole(role);
+          setUserName(fullName);
         } catch (err) {
-          console.error('Lỗi khi lấy vai trò người dùng:', err);
+          console.error('Lỗi khi lấy thông tin người dùng:', err);
         }
       }
       
@@ -72,14 +79,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (currentUser) {
         try {
-          const role = await fetchUserRole(currentUser.id);
-          console.log('Vai trò người dùng từ onAuthStateChange:', role);
+          const { role, fullName } = await fetchUserProfile(currentUser.id);
+          console.log('Thông tin người dùng từ onAuthStateChange:', { role, fullName });
           setUserRole(role);
+          setUserName(fullName);
         } catch (err) {
-          console.error('Lỗi khi lấy vai trò người dùng:', err);
+          console.error('Lỗi khi lấy thông tin người dùng:', err);
         }
       } else {
         setUserRole(null);
+        setUserName(null);
       }
       
       setLoading(false);
@@ -100,7 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, userRole, signOut }}>
+    <AuthContext.Provider value={{ user, loading, userRole, userName, signOut }}>
       {children}
     </AuthContext.Provider>
   );

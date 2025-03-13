@@ -1,10 +1,11 @@
 
-import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Star } from 'lucide-react';
 import SideNav from '@/components/SideNav';
 import UserHeader from '@/components/UserHeader';
 import ActivityCard from '@/components/ActivityCard';
 import ActivityFormModal, { Activity } from '@/components/ActivityFormModal';
+import EvaluationModal from '@/components/EvaluationModal';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
@@ -33,34 +34,16 @@ const mapSupabaseActivity = (activity: SupabaseActivity): Activity => ({
 });
 
 const Activities = () => {
-  const [userName, setUserName] = useState('');
   const { user, userRole } = useAuth();
   const queryClient = useQueryClient();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedActivity, setSelectedActivity] = useState<Activity | undefined>(undefined);
-  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
-  const [selectedActivityForRegistration, setSelectedActivityForRegistration] = useState<string | null>(null);
   
-  // Fetch user profile to get name
-  useEffect(() => {
-    if (user) {
-      const fetchProfile = async () => {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .single();
-          
-        if (data && !error) {
-          setUserName(data.full_name || user.email || '');
-        }
-      };
-      
-      fetchProfile();
-    }
-  }, [user]);
+  // Evaluation modal state
+  const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
+  const [selectedActivityForEvaluation, setSelectedActivityForEvaluation] = useState<Activity | null>(null);
   
   // Query to fetch activities
   const { data: activities = [], isLoading } = useQuery({
@@ -188,6 +171,38 @@ const Activities = () => {
     }
   });
   
+  // Mutation to submit activity evaluation
+  const evaluateActivityMutation = useMutation({
+    mutationFn: async ({ activityId, rating, comment }: { activityId: string, rating: number, comment: string }) => {
+      // Here you would create a table for evaluations if needed
+      const { data, error } = await supabase
+        .from('activity_evaluations')
+        .insert({
+          activity_id: activityId,
+          student_id: user!.id,
+          rating: rating,
+          comment: comment
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      toast.success('Đã gửi đánh giá thành công');
+    },
+    onError: (error: any) => {
+      console.error('Error evaluating activity:', error);
+      if (error.code === '23505') {
+        toast.error('Bạn đã đánh giá hoạt động này rồi');
+      } else {
+        toast.error('Không thể gửi đánh giá');
+      }
+    }
+  });
+  
   // Query to check if user has registered for activities
   const { data: myRegistrations = [] } = useQuery({
     queryKey: ['myRegistrations'],
@@ -247,6 +262,15 @@ const Activities = () => {
     registerActivityMutation.mutate(id);
   };
   
+  const handleEvaluateActivity = (activity: Activity) => {
+    setSelectedActivityForEvaluation(activity);
+    setIsEvaluationModalOpen(true);
+  };
+  
+  const handleSaveEvaluation = (activityId: string, rating: number, comment: string) => {
+    evaluateActivityMutation.mutate({ activityId, rating, comment });
+  };
+  
   const isRegistered = (activityId: string) => {
     return myRegistrations.includes(activityId);
   };
@@ -256,7 +280,7 @@ const Activities = () => {
       <SideNav />
       
       <div className="flex-1 ml-64 p-8 animate-fade-in">
-        <UserHeader userName={userName} />
+        <UserHeader />
         
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Quản lý hoạt động ngoại khóa</h1>
@@ -298,14 +322,23 @@ const Activities = () => {
                 />
                 
                 {userRole === 'student' && (
-                  <div className="mt-4 pt-4 border-t border-border">
+                  <div className="mt-4 pt-4 border-t border-border flex gap-2">
                     <Button 
                       onClick={() => handleRegisterActivity(activity.id)}
                       variant={isRegistered(activity.id) ? "outline" : "default"}
-                      className="w-full"
+                      className="flex-1"
                       disabled={isRegistered(activity.id)}
                     >
                       {isRegistered(activity.id) ? 'Đã đăng ký' : 'Đăng ký tham gia'}
+                    </Button>
+                    
+                    <Button
+                      onClick={() => handleEvaluateActivity(activity)}
+                      variant="outline"
+                      className="flex items-center gap-1"
+                    >
+                      <Star className="h-4 w-4" />
+                      <span>Đánh giá</span>
                     </Button>
                   </div>
                 )}
@@ -321,6 +354,16 @@ const Activities = () => {
             onSave={handleSaveActivity}
             activity={selectedActivity}
             mode={modalMode}
+          />
+        )}
+        
+        {selectedActivityForEvaluation && (
+          <EvaluationModal
+            activityId={selectedActivityForEvaluation.id}
+            activityTitle={selectedActivityForEvaluation.title}
+            isOpen={isEvaluationModalOpen}
+            onClose={() => setIsEvaluationModalOpen(false)}
+            onSave={handleSaveEvaluation}
           />
         )}
       </div>
