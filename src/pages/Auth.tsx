@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Github, Mail } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -15,13 +16,21 @@ const Auth = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    fullName: ''
+    fullName: '',
+    role: 'student'
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
+    });
+  };
+
+  const handleRoleChange = (value: string) => {
+    setFormData({
+      ...formData,
+      role: value
     });
   };
 
@@ -36,7 +45,8 @@ const Auth = () => {
           password: formData.password,
           options: {
             data: {
-              full_name: formData.fullName
+              full_name: formData.fullName,
+              role: formData.role
             }
           }
         });
@@ -117,6 +127,26 @@ const Auth = () => {
               onChange={handleInputChange}
             />
           </div>
+
+          {isSignUp && (
+            <div className="space-y-2">
+              <Label>Vai trò</Label>
+              <RadioGroup
+                value={formData.role}
+                onValueChange={handleRoleChange}
+                className="flex space-x-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="student" id="student" />
+                  <Label htmlFor="student">Học sinh</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="teacher" id="teacher" />
+                  <Label htmlFor="teacher">Giáo viên</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             <Mail className="mr-2" />

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
 
 // Define a type that matches our Supabase activities table
 interface SupabaseActivity {
@@ -33,12 +34,14 @@ const mapSupabaseActivity = (activity: SupabaseActivity): Activity => ({
 
 const Activities = () => {
   const [userName, setUserName] = useState('');
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const queryClient = useQueryClient();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedActivity, setSelectedActivity] = useState<Activity | undefined>(undefined);
+  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState(false);
+  const [selectedActivityForRegistration, setSelectedActivityForRegistration] = useState<string | null>(null);
   
   // Fetch user profile to get name
   useEffect(() => {
@@ -153,6 +156,58 @@ const Activities = () => {
       toast.error('Không thể xóa hoạt động');
     }
   });
+
+  // Mutation to register for an activity
+  const registerActivityMutation = useMutation({
+    mutationFn: async (activityId: string) => {
+      const { data, error } = await supabase
+        .from('student_registrations')
+        .insert({
+          activity_id: activityId,
+          student_id: user!.id,
+          status: 'pending'
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activities'] });
+      queryClient.invalidateQueries({ queryKey: ['myRegistrations'] });
+      toast.success('Đã đăng ký hoạt động thành công');
+    },
+    onError: (error: any) => {
+      console.error('Error registering for activity:', error);
+      if (error.code === '23505') {
+        toast.error('Bạn đã đăng ký hoạt động này rồi');
+      } else {
+        toast.error('Không thể đăng ký hoạt động');
+      }
+    }
+  });
+  
+  // Query to check if user has registered for activities
+  const { data: myRegistrations = [] } = useQuery({
+    queryKey: ['myRegistrations'],
+    queryFn: async () => {
+      if (userRole !== 'student') return [];
+      
+      const { data, error } = await supabase
+        .from('student_registrations')
+        .select('activity_id')
+        .eq('student_id', user!.id);
+        
+      if (error) {
+        toast.error('Không thể tải đăng ký: ' + error.message);
+        return [];
+      }
+      
+      return data.map(reg => reg.activity_id);
+    },
+    enabled: !!user && userRole === 'student'
+  });
   
   const handleAddActivity = () => {
     setModalMode('add');
@@ -187,6 +242,14 @@ const Activities = () => {
     
     setIsModalOpen(false);
   };
+
+  const handleRegisterActivity = (id: string) => {
+    registerActivityMutation.mutate(id);
+  };
+  
+  const isRegistered = (activityId: string) => {
+    return myRegistrations.includes(activityId);
+  };
   
   return (
     <div className="min-h-screen bg-background flex">
@@ -198,13 +261,15 @@ const Activities = () => {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Quản lý hoạt động ngoại khóa</h1>
           
-          <button 
-            onClick={handleAddActivity} 
-            className="inline-flex items-center justify-center px-4 py-2 bg-system-green text-white rounded-md hover:bg-system-greenHover transition-colors gap-1.5"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Thêm hoạt động</span>
-          </button>
+          {userRole === 'teacher' && (
+            <button 
+              onClick={handleAddActivity} 
+              className="inline-flex items-center justify-center px-4 py-2 bg-system-green text-white rounded-md hover:bg-system-greenHover transition-colors gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Thêm hoạt động</span>
+            </button>
+          )}
         </div>
         
         {isLoading ? (
@@ -213,32 +278,51 @@ const Activities = () => {
           </div>
         ) : activities.length === 0 ? (
           <div className="text-center p-8 border border-dashed rounded-lg bg-background">
-            <p className="text-muted-foreground">Chưa có hoạt động nào. Nhấn "Thêm hoạt động" để bắt đầu.</p>
+            <p className="text-muted-foreground">
+              {userRole === 'teacher' 
+                ? "Chưa có hoạt động nào. Nhấn \"Thêm hoạt động\" để bắt đầu."
+                : "Chưa có hoạt động nào được tạo."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {activities.map((activity) => (
-              <ActivityCard
-                key={activity.id}
-                title={activity.title}
-                date={activity.date}
-                location={activity.location}
-                participants={activity.participants}
-                onEdit={() => handleEditActivity(activity.id)}
-                onDelete={() => handleDeleteActivity(activity.id)}
-                className="bg-white rounded-xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow"
-              />
+              <div key={activity.id} className="bg-white rounded-xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow">
+                <ActivityCard
+                  title={activity.title}
+                  date={activity.date}
+                  location={activity.location}
+                  participants={activity.participants}
+                  onEdit={userRole === 'teacher' ? () => handleEditActivity(activity.id) : undefined}
+                  onDelete={userRole === 'teacher' ? () => handleDeleteActivity(activity.id) : undefined}
+                />
+                
+                {userRole === 'student' && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <Button 
+                      onClick={() => handleRegisterActivity(activity.id)}
+                      variant={isRegistered(activity.id) ? "outline" : "default"}
+                      className="w-full"
+                      disabled={isRegistered(activity.id)}
+                    >
+                      {isRegistered(activity.id) ? 'Đã đăng ký' : 'Đăng ký tham gia'}
+                    </Button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}
         
-        <ActivityFormModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onSave={handleSaveActivity}
-          activity={selectedActivity}
-          mode={modalMode}
-        />
+        {userRole === 'teacher' && (
+          <ActivityFormModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            onSave={handleSaveActivity}
+            activity={selectedActivity}
+            mode={modalMode}
+          />
+        )}
       </div>
     </div>
   );

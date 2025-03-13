@@ -72,6 +72,38 @@ export type Database = {
         }
         Relationships: []
       }
+      student_registrations: {
+        Row: {
+          activity_id: string
+          id: string
+          registration_date: string
+          status: string
+          student_id: string
+        }
+        Insert: {
+          activity_id: string
+          id?: string
+          registration_date?: string
+          status?: string
+          student_id: string
+        }
+        Update: {
+          activity_id?: string
+          id?: string
+          registration_date?: string
+          status?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_registrations_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

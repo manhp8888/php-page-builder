@@ -15,6 +15,7 @@ import Students from "./pages/Students";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import Reports from "./pages/Reports";
+import MyRegistrations from "./pages/MyRegistrations";
 
 const queryClient = new QueryClient();
 
@@ -30,13 +31,23 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/login" element={<Navigate to="/auth" replace />} />
             
+            {/* Routes available to all authenticated users */}
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/activities" element={<Activities />} />
+              <Route path="/profile" element={<Profile />} />
+            </Route>
+            
+            {/* Teacher-only routes */}
+            <Route element={<ProtectedRoute allowedRoles={['teacher']} />}>
               <Route path="/activities/:id/evaluate" element={<ActivityEvaluation />} />
               <Route path="/students" element={<Students />} />
-              <Route path="/profile" element={<Profile />} />
               <Route path="/reports" element={<Reports />} />
+            </Route>
+            
+            {/* Student-only routes */}
+            <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+              <Route path="/my-registrations" element={<MyRegistrations />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />

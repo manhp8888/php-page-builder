@@ -6,21 +6,34 @@ import {
   Calendar, 
   FileText,
   User,
-  LogOut
+  LogOut,
+  ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from './AuthProvider';
 
 const SideNav = () => {
   const location = useLocation();
+  const { userRole, signOut } = useAuth();
   
   const isActive = (path: string) => location.pathname === path;
   
-  const menuItems = [
+  // Shared menu items for both teachers and students
+  const sharedMenuItems = [
     {
       title: 'Hoạt động ngoại khóa',
       path: '/activities',
       icon: <Calendar className="h-5 w-5" />
     },
+    {
+      title: 'Tài khoản',
+      path: '/profile',
+      icon: <User className="h-5 w-5" />
+    },
+  ];
+  
+  // Teacher-only menu items
+  const teacherMenuItems = [
     {
       title: 'Học sinh',
       path: '/students',
@@ -31,11 +44,22 @@ const SideNav = () => {
       path: '/reports',
       icon: <FileText className="h-5 w-5" />
     },
+  ];
+  
+  // Student-only menu items
+  const studentMenuItems = [
     {
-      title: 'Tài khoản',
-      path: '/profile',
-      icon: <User className="h-5 w-5" />
+      title: 'Đăng ký của tôi',
+      path: '/my-registrations',
+      icon: <ClipboardList className="h-5 w-5" />
     },
+  ];
+  
+  // Determine which items to display based on role
+  const menuItems = [
+    ...sharedMenuItems,
+    ...(userRole === 'teacher' ? teacherMenuItems : []),
+    ...(userRole === 'student' ? studentMenuItems : []),
   ];
 
   return (
@@ -72,10 +96,10 @@ const SideNav = () => {
       </div>
       
       <div className="p-4 border-t border-sidebar-border">
-        <Link to="/login" className="sidebar-item">
+        <button onClick={signOut} className="sidebar-item w-full text-left">
           <LogOut className="h-5 w-5" />
           <span>Đăng xuất</span>
-        </Link>
+        </button>
       </div>
     </div>
   );
