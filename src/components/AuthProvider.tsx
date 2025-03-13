@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -25,42 +26,58 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   const fetchUserRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching user role:', error);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role, full_name')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Lỗi khi lấy thông tin người dùng:', error);
+        return null;
+      }
+      
+      console.log('Dữ liệu hồ sơ người dùng:', data);
+      return data?.role;
+    } catch (err) {
+      console.error('Lỗi không xác định khi lấy vai trò người dùng:', err);
       return null;
     }
-    
-    return data?.role;
   };
 
   useEffect(() => {
-    // Check active sessions
+    // Kiểm tra phiên hiện tại
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
       if (currentUser) {
-        const role = await fetchUserRole(currentUser.id);
-        setUserRole(role);
+        try {
+          const role = await fetchUserRole(currentUser.id);
+          console.log('Vai trò người dùng từ getSession:', role);
+          setUserRole(role);
+        } catch (err) {
+          console.error('Lỗi khi lấy vai trò người dùng:', err);
+        }
       }
       
       setLoading(false);
     });
 
-    // Listen for auth changes
+    // Lắng nghe sự thay đổi trạng thái xác thực
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
       if (currentUser) {
-        const role = await fetchUserRole(currentUser.id);
-        setUserRole(role);
+        try {
+          const role = await fetchUserRole(currentUser.id);
+          console.log('Vai trò người dùng từ onAuthStateChange:', role);
+          setUserRole(role);
+        } catch (err) {
+          console.error('Lỗi khi lấy vai trò người dùng:', err);
+        }
       } else {
         setUserRole(null);
       }
@@ -72,8 +89,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth');
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+      toast.success('Đã đăng xuất thành công');
+    } catch (error) {
+      console.error('Lỗi khi đăng xuất:', error);
+      toast.error('Đăng xuất không thành công');
+    }
   };
 
   return (

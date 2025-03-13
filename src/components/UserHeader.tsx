@@ -11,11 +11,11 @@ interface UserHeaderProps {
 const UserHeader = ({ userName, userRole = 'Giáo viên', className = '' }: UserHeaderProps) => {
   return (
     <div className={`flex items-center justify-between border-b border-border pb-4 mb-6 ${className}`}>
-      <h1 className="text-2xl font-semibold">Chào mừng, {userName}!</h1>
+      <h1 className="text-2xl font-semibold">Chào mừng, {userName || 'Người dùng'}!</h1>
       
       <Link to="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
         <div className="flex flex-col items-end">
-          <span className="font-medium">{userName}</span>
+          <span className="font-medium">{userName || 'Người dùng'}</span>
           <span className="text-sm text-muted-foreground">{userRole}</span>
         </div>
         <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white">

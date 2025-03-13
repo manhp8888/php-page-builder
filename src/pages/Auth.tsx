@@ -40,7 +40,8 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+        // Đăng ký người dùng mới
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
@@ -50,9 +51,27 @@ const Auth = () => {
             }
           }
         });
-        if (error) throw error;
+        
+        if (signUpError) throw signUpError;
+        
+        // Nếu đăng ký thành công, cập nhật hồ sơ người dùng với vai trò
+        if (signUpData.user) {
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ 
+              role: formData.role,
+              full_name: formData.fullName 
+            })
+            .eq('id', signUpData.user.id);
+            
+          if (profileError) {
+            console.error('Lỗi cập nhật hồ sơ:', profileError);
+          }
+        }
+        
         toast.success('Đăng ký thành công! Vui lòng kiểm tra email của bạn.');
       } else {
+        // Đăng nhập
         const { error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password

@@ -1,21 +1,64 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SideNav from '@/components/SideNav';
 import UserHeader from '@/components/UserHeader';
 import { toast } from 'sonner';
 import { User, Mail, Phone, School, Save } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/components/AuthProvider';
 
 const Profile = () => {
+  const { user, userRole } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState({
-    name: 'Nguyễn Văn A',
-    email: 'nguyenvana@edu.vn',
-    phone: '0912345678',
-    school: 'Trường THPT Việt Nam',
-    role: 'Giáo viên'
+    name: '',
+    email: '',
+    phone: '',
+    school: '',
+    role: ''
   });
 
   const [isEditing, setIsEditing] = useState(false);
   
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user) return;
+      
+      try {
+        setIsLoading(true);
+        
+        // Lấy dữ liệu từ bảng profiles
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) {
+          console.error('Lỗi khi lấy thông tin hồ sơ:', error);
+          toast.error('Không thể tải thông tin hồ sơ');
+          return;
+        }
+        
+        // Cập nhật state với dữ liệu từ cơ sở dữ liệu
+        setUserData({
+          name: data.full_name || '',
+          email: user.email || '',
+          phone: data.phone || '',
+          school: data.school || '',
+          role: data.role === 'teacher' ? 'Giáo viên' : 'Học sinh'
+        });
+      } catch (error) {
+        console.error('Lỗi:', error);
+        toast.error('Đã xảy ra lỗi khi tải thông tin người dùng');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setUserData(prev => ({
@@ -24,14 +67,48 @@ const Profile = () => {
     }));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Giả lập cập nhật thành công
-    setTimeout(() => {
+    
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: userData.name,
+          phone: userData.phone,
+          school: userData.school
+        })
+        .eq('id', user.id);
+      
+      if (error) {
+        console.error('Lỗi khi cập nhật hồ sơ:', error);
+        toast.error('Không thể cập nhật thông tin');
+        return;
+      }
+      
       toast.success('Cập nhật thông tin thành công!');
       setIsEditing(false);
-    }, 500);
+    } catch (error) {
+      console.error('Lỗi:', error);
+      toast.error('Đã xảy ra lỗi khi cập nhật thông tin');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex">
+        <SideNav />
+        <div className="flex-1 ml-64 p-8 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-system-blue mx-auto"></div>
+            <p className="mt-3 text-muted-foreground">Đang tải thông tin...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -84,7 +161,7 @@ const Profile = () => {
                     type="email"
                     value={userData.email}
                     onChange={handleInputChange}
-                    disabled={!isEditing}
+                    disabled={true}
                     className="input-field pl-9"
                   />
                 </div>

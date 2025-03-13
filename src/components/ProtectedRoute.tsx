@@ -1,6 +1,7 @@
 
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
+import { useEffect } from 'react';
 
 interface ProtectedRouteProps {
   allowedRoles?: string[];
@@ -9,6 +10,14 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps = {}) => {
   const { user, loading, userRole } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    if (!loading) {
+      console.log('Protected Route - User Role:', userRole);
+      console.log('Allowed Roles:', allowedRoles);
+      console.log('Access allowed:', !allowedRoles || !allowedRoles.length || (userRole && allowedRoles.includes(userRole)));
+    }
+  }, [loading, userRole, allowedRoles]);
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">
@@ -23,9 +32,10 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps = {}) => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // If specific roles are required and the user doesn't have one of those roles
+  // Kiểm tra xem người dùng có quyền truy cập vào tuyến đường này không
   if (allowedRoles && allowedRoles.length > 0 && (!userRole || !allowedRoles.includes(userRole))) {
-    // Redirect students to dashboard when they try to access teacher-only routes
+    console.log(`Chuyển hướng: Người dùng có vai trò ${userRole} không có quyền truy cập vào tuyến đường yêu cầu vai trò ${allowedRoles.join(', ')}`);
+    // Chuyển hướng học sinh đến dashboard khi họ cố gắng truy cập các tuyến đường chỉ dành cho giáo viên
     return <Navigate to="/dashboard" replace />;
   }
 
