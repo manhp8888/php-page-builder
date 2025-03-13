@@ -5,12 +5,16 @@ import { useAuth } from './AuthProvider';
 
 interface UserHeaderProps {
   className?: string;
+  userName?: string;
+  userRole?: string;
 }
 
-const UserHeader = ({ className = '' }: UserHeaderProps) => {
-  const { userName, userRole } = useAuth();
+const UserHeader = ({ className = '', userName: propUserName, userRole: propUserRole }: UserHeaderProps) => {
+  const auth = useAuth();
   
-  const displayName = userName || 'Người dùng';
+  // Use props if provided, otherwise use values from auth context
+  const displayName = propUserName || auth.userName || 'Người dùng';
+  const userRole = propUserRole || auth.userRole;
   const displayRole = userRole === 'teacher' ? 'Giáo viên' : 'Học sinh';
 
   return (

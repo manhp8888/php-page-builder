@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Plus, Star } from 'lucide-react';
 import SideNav from '@/components/SideNav';
@@ -12,7 +11,6 @@ import { useAuth } from '@/components/AuthProvider';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 
-// Define a type that matches our Supabase activities table
 interface SupabaseActivity {
   id: string;
   title: string;
@@ -24,7 +22,6 @@ interface SupabaseActivity {
   created_at: string;
 }
 
-// Convert Supabase activity to our component's Activity type
 const mapSupabaseActivity = (activity: SupabaseActivity): Activity => ({
   id: activity.id,
   title: activity.title,
@@ -41,11 +38,9 @@ const Activities = () => {
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedActivity, setSelectedActivity] = useState<Activity | undefined>(undefined);
   
-  // Evaluation modal state
   const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
   const [selectedActivityForEvaluation, setSelectedActivityForEvaluation] = useState<Activity | null>(null);
   
-  // Query to fetch activities
   const { data: activities = [], isLoading } = useQuery({
     queryKey: ['activities'],
     queryFn: async () => {
@@ -64,7 +59,6 @@ const Activities = () => {
     enabled: !!user
   });
   
-  // Mutation to add activity
   const addActivityMutation = useMutation({
     mutationFn: async (formData: Omit<Activity, 'id'>) => {
       const { data, error } = await supabase
@@ -92,7 +86,6 @@ const Activities = () => {
     }
   });
   
-  // Mutation to update activity
   const updateActivityMutation = useMutation({
     mutationFn: async (formData: Activity) => {
       const { data, error } = await supabase
@@ -120,7 +113,6 @@ const Activities = () => {
     }
   });
   
-  // Mutation to delete activity
   const deleteActivityMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -140,7 +132,6 @@ const Activities = () => {
     }
   });
 
-  // Mutation to register for an activity
   const registerActivityMutation = useMutation({
     mutationFn: async (activityId: string) => {
       const { data, error } = await supabase
@@ -171,20 +162,15 @@ const Activities = () => {
     }
   });
   
-  // Mutation to submit activity evaluation
   const evaluateActivityMutation = useMutation({
     mutationFn: async ({ activityId, rating, comment }: { activityId: string, rating: number, comment: string }) => {
-      // Here you would create a table for evaluations if needed
       const { data, error } = await supabase
-        .from('activity_evaluations')
-        .insert({
-          activity_id: activityId,
-          student_id: user!.id,
-          rating: rating,
-          comment: comment
-        })
-        .select()
-        .single();
+        .rpc('add_activity_evaluation', {
+          p_activity_id: activityId,
+          p_student_id: user!.id,
+          p_rating: rating,
+          p_comment: comment
+        });
         
       if (error) throw error;
       return data;
@@ -192,18 +178,18 @@ const Activities = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
       toast.success('Đã gửi đánh giá thành công');
+      setIsEvaluationModalOpen(false);
     },
     onError: (error: any) => {
       console.error('Error evaluating activity:', error);
       if (error.code === '23505') {
         toast.error('Bạn đã đánh giá hoạt động này rồi');
       } else {
-        toast.error('Không thể gửi đánh giá');
+        toast.error('Không thể gửi đánh giá: ' + error.message);
       }
     }
   });
   
-  // Query to check if user has registered for activities
   const { data: myRegistrations = [] } = useQuery({
     queryKey: ['myRegistrations'],
     queryFn: async () => {
@@ -249,7 +235,6 @@ const Activities = () => {
     if (modalMode === 'add') {
       addActivityMutation.mutate(formData);
     } else {
-      // Edit existing activity
       if (formData.id) {
         updateActivityMutation.mutate(formData as Activity);
       }
