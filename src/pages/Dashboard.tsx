@@ -10,7 +10,7 @@ import { useAuth } from '@/components/AuthProvider';
 import { toast } from 'sonner';
 
 const Dashboard = () => {
-  const { userRole } = useAuth();
+  const { user, userRole } = useAuth();
   
   // Fetch upcoming activities
   const { data: upcomingActivities = [], isLoading: isLoadingActivities } = useQuery({
@@ -42,12 +42,12 @@ const Dashboard = () => {
   const { data: myRegistrations = [] } = useQuery({
     queryKey: ['myRegistrations'],
     queryFn: async () => {
-      if (userRole !== 'student') return [];
+      if (!user || userRole !== 'student') return [];
       
       const { data, error } = await supabase
         .from('student_registrations')
         .select('activity_id, status, activities(id, title, date, location, participants)')
-        .eq('student_id', supabase.auth.getUser().then(res => res.data.user?.id))
+        .eq('student_id', user.id)
         .order('registration_date', { ascending: false });
         
       if (error) {
@@ -64,7 +64,7 @@ const Dashboard = () => {
         status: reg.status
       }));
     },
-    enabled: userRole === 'student'
+    enabled: !!user && userRole === 'student'
   });
   
   // Placeholder notifications
