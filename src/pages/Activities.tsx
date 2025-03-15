@@ -164,7 +164,7 @@ const Activities = () => {
   
   const evaluateActivityMutation = useMutation({
     mutationFn: async ({ activityId, rating, comment }: { activityId: string, rating: number, comment: string }) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .rpc('add_activity_evaluation', {
           p_activity_id: activityId,
           p_student_id: user!.id,
@@ -173,7 +173,7 @@ const Activities = () => {
         });
         
       if (error) throw error;
-      return data;
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activities'] });
