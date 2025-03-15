@@ -164,8 +164,15 @@ const Activities = () => {
   
   const evaluateActivityMutation = useMutation({
     mutationFn: async ({ activityId, rating, comment }: { activityId: string, rating: number, comment: string }) => {
+      interface AddActivityEvaluationParams {
+        p_activity_id: string;
+        p_student_id: string;
+        p_rating: number;
+        p_comment: string;
+      }
+      
       const { error } = await supabase
-        .rpc('add_activity_evaluation', {
+        .rpc<any, AddActivityEvaluationParams>('add_activity_evaluation', {
           p_activity_id: activityId,
           p_student_id: user!.id,
           p_rating: rating,
