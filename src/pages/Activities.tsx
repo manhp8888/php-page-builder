@@ -1,222 +1,33 @@
+
 import { useState } from 'react';
-import { Plus, Star } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import SideNav from '@/components/SideNav';
 import UserHeader from '@/components/UserHeader';
-import ActivityCard from '@/components/ActivityCard';
 import ActivityFormModal, { Activity } from '@/components/ActivityFormModal';
 import EvaluationModal from '@/components/EvaluationModal';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/components/AuthProvider';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-
-interface SupabaseActivity {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  participants: number | null;
-  user_id: string;
-  description: string | null;
-  created_at: string;
-}
-
-const mapSupabaseActivity = (activity: SupabaseActivity): Activity => ({
-  id: activity.id,
-  title: activity.title,
-  date: activity.date,
-  location: activity.location,
-  participants: activity.participants || 0
-});
+import ActivityList from '@/components/ActivityList';
+import { useActivitiesData } from '@/hooks/useActivitiesData';
+import { useActivityMutations } from '@/hooks/useActivityMutations';
+import { useStudentActivityMutations } from '@/hooks/useStudentActivityMutations';
 
 const Activities = () => {
   const { user, userRole } = useAuth();
-  const queryClient = useQueryClient();
   
+  // State for modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
   const [selectedActivity, setSelectedActivity] = useState<Activity | undefined>(undefined);
-  
   const [isEvaluationModalOpen, setIsEvaluationModalOpen] = useState(false);
   const [selectedActivityForEvaluation, setSelectedActivityForEvaluation] = useState<Activity | null>(null);
   
-  const { data: activities = [], isLoading } = useQuery({
-    queryKey: ['activities'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('activities')
-        .select('*')
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        toast.error('Không thể tải hoạt động: ' + error.message);
-        return [];
-      }
-      
-      return data.map(mapSupabaseActivity);
-    },
-    enabled: !!user
-  });
+  // Custom hooks for data and mutations
+  const { activities, isLoading, isRegistered } = useActivitiesData(user, userRole);
+  const { addActivityMutation, updateActivityMutation, deleteActivityMutation } = useActivityMutations(user?.id);
+  const { registerActivityMutation, evaluateActivityMutation } = useStudentActivityMutations(user?.id);
   
-  const addActivityMutation = useMutation({
-    mutationFn: async (formData: Omit<Activity, 'id'>) => {
-      const { data, error } = await supabase
-        .from('activities')
-        .insert({
-          title: formData.title,
-          date: formData.date,
-          location: formData.location,
-          participants: formData.participants,
-          user_id: user!.id
-        })
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
-      toast.success('Đã thêm hoạt động thành công');
-    },
-    onError: (error) => {
-      console.error('Error adding activity:', error);
-      toast.error('Không thể thêm hoạt động');
-    }
-  });
-  
-  const updateActivityMutation = useMutation({
-    mutationFn: async (formData: Activity) => {
-      const { data, error } = await supabase
-        .from('activities')
-        .update({
-          title: formData.title,
-          date: formData.date,
-          location: formData.location,
-          participants: formData.participants
-        })
-        .eq('id', formData.id)
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
-      toast.success('Đã cập nhật hoạt động thành công');
-    },
-    onError: (error) => {
-      console.error('Error updating activity:', error);
-      toast.error('Không thể cập nhật hoạt động');
-    }
-  });
-  
-  const deleteActivityMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('activities')
-        .delete()
-        .eq('id', id);
-        
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
-      toast.success('Đã xóa hoạt động thành công');
-    },
-    onError: (error) => {
-      console.error('Error deleting activity:', error);
-      toast.error('Không thể xóa hoạt động');
-    }
-  });
-
-  const registerActivityMutation = useMutation({
-    mutationFn: async (activityId: string) => {
-      const { data, error } = await supabase
-        .from('student_registrations')
-        .insert({
-          activity_id: activityId,
-          student_id: user!.id,
-          status: 'pending'
-        })
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
-      queryClient.invalidateQueries({ queryKey: ['myRegistrations'] });
-      toast.success('Đã đăng ký hoạt động thành công');
-    },
-    onError: (error: any) => {
-      console.error('Error registering for activity:', error);
-      if (error.code === '23505') {
-        toast.error('Bạn đã đăng ký hoạt động này rồi');
-      } else {
-        toast.error('Không thể đăng ký hoạt động');
-      }
-    }
-  });
-  
-  const evaluateActivityMutation = useMutation({
-    mutationFn: async ({ activityId, rating, comment }: { activityId: string, rating: number, comment: string }) => {
-      interface AddActivityEvaluationParams {
-        p_activity_id: string;
-        p_student_id: string;
-        p_rating: number;
-        p_comment: string;
-      }
-      
-      const { error } = await supabase
-        .rpc<any, AddActivityEvaluationParams>('add_activity_evaluation', {
-          p_activity_id: activityId,
-          p_student_id: user!.id,
-          p_rating: rating,
-          p_comment: comment
-        });
-        
-      if (error) throw error;
-      return { success: true };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activities'] });
-      toast.success('Đã gửi đánh giá thành công');
-      setIsEvaluationModalOpen(false);
-    },
-    onError: (error: any) => {
-      console.error('Error evaluating activity:', error);
-      if (error.code === '23505') {
-        toast.error('Bạn đã đánh giá hoạt động này rồi');
-      } else {
-        toast.error('Không thể gửi đánh giá: ' + error.message);
-      }
-    }
-  });
-  
-  const { data: myRegistrations = [] } = useQuery({
-    queryKey: ['myRegistrations'],
-    queryFn: async () => {
-      if (userRole !== 'student') return [];
-      
-      const { data, error } = await supabase
-        .from('student_registrations')
-        .select('activity_id')
-        .eq('student_id', user!.id);
-        
-      if (error) {
-        toast.error('Không thể tải đăng ký: ' + error.message);
-        return [];
-      }
-      
-      return data.map(reg => reg.activity_id);
-    },
-    enabled: !!user && userRole === 'student'
-  });
-  
+  // Handler functions
   const handleAddActivity = () => {
     setModalMode('add');
     setSelectedActivity(undefined);
@@ -260,11 +71,12 @@ const Activities = () => {
   };
   
   const handleSaveEvaluation = (activityId: string, rating: number, comment: string) => {
-    evaluateActivityMutation.mutate({ activityId, rating, comment });
-  };
-  
-  const isRegistered = (activityId: string) => {
-    return myRegistrations.includes(activityId);
+    evaluateActivityMutation.mutate({ 
+      activityId, 
+      rating, 
+      comment 
+    });
+    setIsEvaluationModalOpen(false);
   };
   
   return (
@@ -301,42 +113,15 @@ const Activities = () => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activities.map((activity) => (
-              <div key={activity.id} className="bg-white rounded-xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow">
-                <ActivityCard
-                  title={activity.title}
-                  date={activity.date}
-                  location={activity.location}
-                  participants={activity.participants}
-                  onEdit={userRole === 'teacher' ? () => handleEditActivity(activity.id) : undefined}
-                  onDelete={userRole === 'teacher' ? () => handleDeleteActivity(activity.id) : undefined}
-                />
-                
-                {userRole === 'student' && (
-                  <div className="mt-4 pt-4 border-t border-border flex gap-2">
-                    <Button 
-                      onClick={() => handleRegisterActivity(activity.id)}
-                      variant={isRegistered(activity.id) ? "outline" : "default"}
-                      className="flex-1"
-                      disabled={isRegistered(activity.id)}
-                    >
-                      {isRegistered(activity.id) ? 'Đã đăng ký' : 'Đăng ký tham gia'}
-                    </Button>
-                    
-                    <Button
-                      onClick={() => handleEvaluateActivity(activity)}
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      <Star className="h-4 w-4" />
-                      <span>Đánh giá</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <ActivityList
+            activities={activities}
+            isRegistered={isRegistered}
+            userRole={userRole}
+            onEdit={handleEditActivity}
+            onDelete={handleDeleteActivity}
+            onRegister={handleRegisterActivity}
+            onEvaluate={handleEvaluateActivity}
+          />
         )}
         
         {userRole === 'teacher' && (
