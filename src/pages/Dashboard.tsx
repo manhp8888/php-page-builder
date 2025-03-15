@@ -1,5 +1,4 @@
 
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import SideNav from '@/components/SideNav';
 import UserHeader from '@/components/UserHeader';

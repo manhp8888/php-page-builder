@@ -6,7 +6,6 @@ import UserHeader from '@/components/UserHeader';
 import ActivityFormModal, { Activity } from '@/components/ActivityFormModal';
 import EvaluationModal from '@/components/EvaluationModal';
 import { useAuth } from '@/components/AuthProvider';
-import { Button } from '@/components/ui/button';
 import ActivityList from '@/components/ActivityList';
 import { useActivitiesData } from '@/hooks/useActivitiesData';
 import { useActivityMutations } from '@/hooks/useActivityMutations';
