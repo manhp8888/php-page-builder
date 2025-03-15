@@ -30,6 +30,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('Fetching user profile for ID:', userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('role, full_name')
@@ -37,54 +39,72 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .single();
       
       if (error) {
-        console.error('Lỗi khi lấy thông tin người dùng:', error);
+        console.error('Error fetching user profile:', error);
         return { role: null, fullName: null };
       }
       
-      console.log('Dữ liệu hồ sơ người dùng:', data);
+      console.log('User profile data:', data);
       return { 
         role: data?.role || null,
         fullName: data?.full_name || null
       };
     } catch (err) {
-      console.error('Lỗi không xác định khi lấy thông tin người dùng:', err);
+      console.error('Unknown error fetching user profile:', err);
       return { role: null, fullName: null };
     }
   };
 
   useEffect(() => {
-    // Kiểm tra phiên hiện tại
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        try {
-          const { role, fullName } = await fetchUserProfile(currentUser.id);
-          console.log('Thông tin người dùng từ getSession:', { role, fullName });
-          setUserRole(role);
-          setUserName(fullName);
-        } catch (err) {
-          console.error('Lỗi khi lấy thông tin người dùng:', err);
+    console.log('AuthProvider initialized');
+    
+    // Check current session
+    const checkSession = async () => {
+      try {
+        console.log('Checking current session');
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Current session:', session);
+        
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        
+        if (currentUser) {
+          console.log('Current user found, fetching profile');
+          try {
+            const { role, fullName } = await fetchUserProfile(currentUser.id);
+            console.log('User profile from getSession:', { role, fullName });
+            setUserRole(role);
+            setUserName(fullName);
+          } catch (err) {
+            console.error('Error fetching user profile:', err);
+          }
+        } else {
+          console.log('No active session found');
         }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error checking session:', error);
+        setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    };
+    
+    checkSession();
 
-    // Lắng nghe sự thay đổi trạng thái xác thực
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, 'Session:', session ? 'exists' : 'null');
+      
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
       if (currentUser) {
         try {
           const { role, fullName } = await fetchUserProfile(currentUser.id);
-          console.log('Thông tin người dùng từ onAuthStateChange:', { role, fullName });
+          console.log('User profile from onAuthStateChange:', { role, fullName });
           setUserRole(role);
           setUserName(fullName);
         } catch (err) {
-          console.error('Lỗi khi lấy thông tin người dùng:', err);
+          console.error('Error fetching user profile:', err);
         }
       } else {
         setUserRole(null);
@@ -99,11 +119,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      console.log('Signing out');
       await supabase.auth.signOut();
       navigate('/auth');
       toast.success('Đã đăng xuất thành công');
     } catch (error) {
-      console.error('Lỗi khi đăng xuất:', error);
+      console.error('Error signing out:', error);
       toast.error('Đăng xuất không thành công');
     }
   };

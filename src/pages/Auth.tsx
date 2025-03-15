@@ -41,6 +41,8 @@ const Auth = () => {
     try {
       if (isSignUp) {
         // Đăng ký người dùng mới
+        console.log('Attempting to sign up with:', { email: formData.email, role: formData.role, fullName: formData.fullName });
+        
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
@@ -52,10 +54,17 @@ const Auth = () => {
           }
         });
         
-        if (signUpError) throw signUpError;
+        if (signUpError) {
+          console.error('Sign-up error:', signUpError);
+          throw signUpError;
+        }
+        
+        console.log('Sign-up successful:', signUpData);
         
         // Nếu đăng ký thành công, cập nhật hồ sơ người dùng với vai trò
         if (signUpData.user) {
+          console.log('Updating profile for user:', signUpData.user.id);
+          
           const { error: profileError } = await supabase
             .from('profiles')
             .upsert({ 
@@ -65,8 +74,10 @@ const Auth = () => {
             });
             
           if (profileError) {
-            console.error('Lỗi cập nhật hồ sơ:', profileError);
+            console.error('Profile update error:', profileError);
             toast.error('Đã đăng ký nhưng không thể cập nhật hồ sơ: ' + profileError.message);
+          } else {
+            console.log('Profile updated successfully');
           }
         }
         
@@ -74,15 +85,25 @@ const Auth = () => {
         setIsSignUp(false);
       } else {
         // Đăng nhập
-        const { error } = await supabase.auth.signInWithPassword({
+        console.log('Attempting to sign in with:', { email: formData.email });
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password
         });
-        if (error) throw error;
+        
+        if (error) {
+          console.error('Sign-in error:', error);
+          throw error;
+        }
+        
+        console.log('Sign-in successful:', data);
         navigate('/dashboard');
+        toast.success('Đăng nhập thành công!');
       }
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Authentication error:', error);
+      toast.error(error.message || 'Đã xảy ra lỗi trong quá trình xác thực');
     } finally {
       setIsLoading(false);
     }
@@ -90,15 +111,24 @@ const Auth = () => {
 
   const handleSocialLogin = async (provider: 'github' | 'google') => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log(`Attempting to sign in with ${provider}`);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/dashboard`
         }
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error(`${provider} sign-in error:`, error);
+        throw error;
+      }
+      
+      console.log(`${provider} sign-in initiated:`, data);
     } catch (error: any) {
-      toast.error(error.message);
+      console.error(`${provider} auth error:`, error);
+      toast.error(error.message || `Đăng nhập bằng ${provider} không thành công`);
     }
   };
 
@@ -171,7 +201,7 @@ const Auth = () => {
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             <Mail className="mr-2" />
-            {isSignUp ? 'Đăng ký với Email' : 'Đăng nhập với Email'}
+            {isLoading ? 'Đang xử lý...' : (isSignUp ? 'Đăng ký với Email' : 'Đăng nhập với Email')}
           </Button>
         </form>
 
