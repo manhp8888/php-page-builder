@@ -14,13 +14,13 @@ interface AuthContextType {
   session: Session | null;
 }
 
-const AuthContext = createContext<AuthContextType>({ 
-  user: null, 
-  loading: true, 
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
   userRole: null,
   userName: null,
   session: null,
-  signOut: async () => {} 
+  signOut: async () => {}
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -33,8 +33,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log('Fetching user profile for ID:', userId);
-      
       const { data, error } = await supabase
         .from('profiles')
         .select('role, full_name')
@@ -46,7 +44,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { role: null, fullName: null };
       }
       
-      console.log('User profile data:', data);
       return { 
         role: data?.role || null,
         fullName: data?.full_name || null
@@ -58,12 +55,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    console.log('AuthProvider initialized');
-    
     // Check current session
     const checkSession = async () => {
       try {
-        console.log('Checking current session');
+        setLoading(true);
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -72,24 +67,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
         
-        console.log('Current session data:', data);
         setSession(data.session);
         
         const currentUser = data.session?.user ?? null;
         setUser(currentUser);
         
         if (currentUser) {
-          console.log('Current user found, fetching profile');
           try {
             const { role, fullName } = await fetchUserProfile(currentUser.id);
-            console.log('User profile from getSession:', { role, fullName });
             setUserRole(role);
             setUserName(fullName);
           } catch (err) {
             console.error('Error fetching user profile:', err);
           }
         } else {
-          console.log('No active session found');
           setUserRole(null);
           setUserName(null);
         }
@@ -105,8 +96,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, 'Session:', session ? 'exists' : 'null');
-      
       setSession(session);
       const currentUser = session?.user ?? null;
       setUser(currentUser);
@@ -114,7 +103,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (currentUser) {
         try {
           const { role, fullName } = await fetchUserProfile(currentUser.id);
-          console.log('User profile from onAuthStateChange:', { role, fullName });
           setUserRole(role);
           setUserName(fullName);
           
@@ -143,20 +131,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      console.log('Signing out');
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Error signing out:', error);
         toast.error('Đăng xuất không thành công: ' + error.message);
-        return;
+      } else {
+        toast.success('Đã đăng xuất thành công');
       }
       
-      toast.success('Đã đăng xuất thành công');
-      // No need to navigate here as the onAuthStateChange will handle it
+      setLoading(false);
     } catch (error: any) {
       console.error('Error signing out:', error);
       toast.error('Đăng xuất không thành công: ' + error.message);
+      setLoading(false);
     }
   };
 

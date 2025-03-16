@@ -22,7 +22,7 @@ const Activities = () => {
   const [selectedActivityForEvaluation, setSelectedActivityForEvaluation] = useState<Activity | null>(null);
   
   // Custom hooks for data and mutations
-  const { activities, isLoading, isRegistered } = useActivitiesData(user, userRole);
+  const { activities, isLoading, isRegistered } = useActivitiesData();
   const { addActivityMutation, updateActivityMutation, deleteActivityMutation } = useActivityMutations(user?.id);
   const { registerActivityMutation, evaluateActivityMutation } = useStudentActivityMutations(user?.id);
   
@@ -123,7 +123,7 @@ const Activities = () => {
           />
         )}
         
-        {userRole === 'teacher' && (
+        {isModalOpen && (
           <ActivityFormModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
@@ -133,7 +133,7 @@ const Activities = () => {
           />
         )}
         
-        {selectedActivityForEvaluation && (
+        {selectedActivityForEvaluation && isEvaluationModalOpen && (
           <EvaluationModal
             activityId={selectedActivityForEvaluation.id}
             activityTitle={selectedActivityForEvaluation.title}

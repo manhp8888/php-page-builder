@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Activity } from '@/components/ActivityFormModal';
+import { useAuth } from '@/components/AuthProvider';
 
 interface SupabaseActivity {
   id: string;
@@ -23,7 +24,9 @@ const mapSupabaseActivity = (activity: SupabaseActivity): Activity => ({
   participants: activity.participants || 0
 });
 
-export const useActivitiesData = (user: any, userRole: string | null) => {
+export const useActivitiesData = () => {
+  const { user, userRole } = useAuth();
+
   const { data: activities = [], isLoading } = useQuery({
     queryKey: ['activities'],
     queryFn: async () => {
@@ -45,12 +48,12 @@ export const useActivitiesData = (user: any, userRole: string | null) => {
   const { data: myRegistrations = [] } = useQuery({
     queryKey: ['myRegistrations'],
     queryFn: async () => {
-      if (userRole !== 'student') return [];
+      if (!user || userRole !== 'student') return [];
       
       const { data, error } = await supabase
         .from('student_registrations')
         .select('activity_id')
-        .eq('student_id', user!.id);
+        .eq('student_id', user.id);
         
       if (error) {
         toast.error('Không thể tải đăng ký: ' + error.message);
