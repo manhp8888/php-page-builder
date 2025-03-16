@@ -1,161 +1,35 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { Github, Mail } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAuthForm } from '@/hooks/useAuthForm';
+import LoginForm from '@/components/auth/LoginForm';
+import SignupForm from '@/components/auth/SignupForm';
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
 const Auth = () => {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    role: 'student'
-  });
+  const {
+    formData,
+    isLoading,
+    error,
+    handleInputChange,
+    handleRoleChange,
+    handleEmailAuth,
+    handleSocialLogin,
+    setError
+  } = useAuthForm(isSignUp);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+  const handleSubmit = async (e: React.FormEvent) => {
+    const success = await handleEmailAuth(e);
+    
+    // If signup was successful, switch to login view
+    if (isSignUp && success) {
+      setIsSignUp(false);
+    }
   };
 
-  const handleRoleChange = (value: string) => {
-    setFormData({
-      ...formData,
-      role: value
-    });
-  };
-
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const toggleAuthMode = () => {
+    setIsSignUp(!isSignUp);
     setError(null);
-
-    try {
-      if (isSignUp) {
-        // Signup new user
-        console.log('Attempting to sign up with:', { 
-          email: formData.email, 
-          role: formData.role, 
-          fullName: formData.fullName 
-        });
-        
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName,
-              role: formData.role
-            }
-          }
-        });
-        
-        if (signUpError) {
-          console.error('Sign-up error:', signUpError);
-          throw signUpError;
-        }
-        
-        console.log('Sign-up successful:', signUpData);
-        
-        // If signup successful, update user profile with role
-        if (signUpData.user) {
-          console.log('Updating profile for user:', signUpData.user.id);
-          
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({ 
-              id: signUpData.user.id,
-              role: formData.role,
-              full_name: formData.fullName 
-            });
-            
-          if (profileError) {
-            console.error('Profile update error:', profileError);
-            toast.error('Đã đăng ký nhưng không thể cập nhật hồ sơ: ' + profileError.message);
-          } else {
-            console.log('Profile updated successfully with role:', formData.role);
-          }
-        }
-        
-        toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
-        setIsSignUp(false);
-      } else {
-        // Login
-        console.log('Attempting to sign in with:', { email: formData.email });
-        
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password
-        });
-        
-        if (error) {
-          console.error('Sign-in error:', error);
-          throw error;
-        }
-        
-        console.log('Sign-in successful:', data);
-        
-        // Fetch user profile to verify role
-        if (data.user) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', data.user.id)
-            .single();
-            
-          if (profileError) {
-            console.error('Error fetching user role after login:', profileError);
-          } else {
-            console.log('User role from login:', profileData.role);
-          }
-        }
-        
-        toast.success('Đăng nhập thành công!');
-        navigate('/dashboard');
-      }
-    } catch (error: any) {
-      console.error('Authentication error:', error);
-      setError(error.message || 'Đã xảy ra lỗi trong quá trình xác thực');
-      toast.error(error.message || 'Đã xảy ra lỗi trong quá trình xác thực');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSocialLogin = async (provider: 'github' | 'google') => {
-    try {
-      setError(null);
-      console.log(`Attempting to sign in with ${provider}`);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`
-        }
-      });
-      
-      if (error) {
-        console.error(`${provider} sign-in error:`, error);
-        throw error;
-      }
-      
-      console.log(`${provider} sign-in initiated:`, data);
-    } catch (error: any) {
-      console.error(`${provider} auth error:`, error);
-      setError(error.message || `Đăng nhập bằng ${provider} không thành công`);
-      toast.error(error.message || `Đăng nhập bằng ${provider} không thành công`);
-    }
   };
 
   return (
@@ -166,76 +40,24 @@ const Auth = () => {
           <p className="text-muted-foreground mt-2">Hệ thống quản lý hoạt động ngoại khóa</p>
         </div>
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+        {isSignUp ? (
+          <SignupForm
+            formData={formData}
+            isLoading={isLoading}
+            error={error}
+            handleInputChange={handleInputChange}
+            handleRoleChange={handleRoleChange}
+            handleSubmit={handleSubmit}
+          />
+        ) : (
+          <LoginForm
+            formData={formData}
+            isLoading={isLoading}
+            error={error}
+            handleInputChange={handleInputChange}
+            handleSubmit={handleSubmit}
+          />
         )}
-
-        <form onSubmit={handleEmailAuth} className="space-y-6">
-          {isSignUp && (
-            <div className="space-y-2">
-              <Label htmlFor="fullName">Họ và tên</Label>
-              <Input
-                id="fullName"
-                name="fullName"
-                type="text"
-                required={isSignUp}
-                value={formData.fullName}
-                onChange={handleInputChange}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={formData.email}
-              onChange={handleInputChange}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Mật khẩu</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              required
-              value={formData.password}
-              onChange={handleInputChange}
-            />
-          </div>
-
-          {isSignUp && (
-            <div className="space-y-2">
-              <Label>Vai trò</Label>
-              <RadioGroup
-                value={formData.role}
-                onValueChange={handleRoleChange}
-                className="flex space-x-4"
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="student" id="student" />
-                  <Label htmlFor="student">Học sinh</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="teacher" id="teacher" />
-                  <Label htmlFor="teacher">Giáo viên</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          )}
-
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            <Mail className="mr-2" />
-            {isLoading ? 'Đang xử lý...' : (isSignUp ? 'Đăng ký với Email' : 'Đăng nhập với Email')}
-          </Button>
-        </form>
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
@@ -246,27 +68,16 @@ const Auth = () => {
           </div>
         </div>
 
-        <div className="space-y-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => handleSocialLogin('github')}
-            disabled={isLoading}
-          >
-            <Github className="mr-2" />
-            Github
-          </Button>
-        </div>
+        <SocialLoginButtons 
+          isLoading={isLoading}
+          handleSocialLogin={handleSocialLogin}
+        />
 
         <div className="text-center mt-6">
           <button
             type="button"
             className="text-sm text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-            }}
+            onClick={toggleAuthMode}
           >
             {isSignUp ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký'}
           </button>
