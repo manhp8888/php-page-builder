@@ -90,6 +90,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         } else {
           console.log('No active session found');
+          setUserRole(null);
+          setUserName(null);
         }
         
         setLoading(false);

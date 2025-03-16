@@ -23,6 +23,8 @@ const ActivityItem = ({
   onRegister,
   onEvaluate
 }: ActivityItemProps) => {
+  console.log('ActivityItem - Current User Role:', userRole);
+  
   return (
     <div className="bg-white rounded-xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow">
       <ActivityCard

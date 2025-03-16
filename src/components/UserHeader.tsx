@@ -14,10 +14,12 @@ const UserHeader = ({ className = '', userName: propUserName, userRole: propUser
   
   // Use props if provided, otherwise use values from auth context
   const displayName = propUserName || auth.userName || 'Người dùng';
-  const userRole = propUserRole || auth.userRole;
+  const role = propUserRole || auth.userRole;
+  
+  console.log('UserHeader - Current User Role:', role);
   
   // Fixed translation of user roles
-  const displayRole = userRole === 'teacher' ? 'Giáo viên' : userRole === 'student' ? 'Học sinh' : 'Người dùng';
+  const displayRole = role === 'teacher' ? 'Giáo viên' : role === 'student' ? 'Học sinh' : 'Người dùng';
 
   return (
     <div className={`flex items-center justify-between border-b border-border pb-4 mb-6 ${className}`}>

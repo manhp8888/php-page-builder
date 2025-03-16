@@ -43,7 +43,7 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        // Đăng ký người dùng mới
+        // Signup new user
         console.log('Attempting to sign up with:', { 
           email: formData.email, 
           role: formData.role, 
@@ -68,7 +68,7 @@ const Auth = () => {
         
         console.log('Sign-up successful:', signUpData);
         
-        // Nếu đăng ký thành công, cập nhật hồ sơ người dùng với vai trò
+        // If signup successful, update user profile with role
         if (signUpData.user) {
           console.log('Updating profile for user:', signUpData.user.id);
           
@@ -84,14 +84,14 @@ const Auth = () => {
             console.error('Profile update error:', profileError);
             toast.error('Đã đăng ký nhưng không thể cập nhật hồ sơ: ' + profileError.message);
           } else {
-            console.log('Profile updated successfully');
+            console.log('Profile updated successfully with role:', formData.role);
           }
         }
         
         toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
         setIsSignUp(false);
       } else {
-        // Đăng nhập
+        // Login
         console.log('Attempting to sign in with:', { email: formData.email });
         
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -105,6 +105,22 @@ const Auth = () => {
         }
         
         console.log('Sign-in successful:', data);
+        
+        // Fetch user profile to verify role
+        if (data.user) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.user.id)
+            .single();
+            
+          if (profileError) {
+            console.error('Error fetching user role after login:', profileError);
+          } else {
+            console.log('User role from login:', profileData.role);
+          }
+        }
+        
         toast.success('Đăng nhập thành công!');
         navigate('/dashboard');
       }

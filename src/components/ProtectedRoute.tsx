@@ -13,11 +13,9 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps = {}) => {
   const location = useLocation();
 
   useEffect(() => {
-    if (!loading) {
-      console.log('Protected Route - User Role:', userRole);
-      console.log('Allowed Roles:', allowedRoles);
-      console.log('Access allowed:', !allowedRoles || !allowedRoles.length || (userRole && allowedRoles.includes(userRole)));
-    }
+    console.log('Protected Route - Current User Role:', userRole);
+    console.log('Protected Route - Allowed Roles:', allowedRoles);
+    console.log('Access allowed:', !allowedRoles || !allowedRoles.length || (userRole && allowedRoles.includes(userRole)));
   }, [loading, userRole, allowedRoles]);
 
   if (loading) {
@@ -33,13 +31,13 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps = {}) => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Kiểm tra xem người dùng có quyền truy cập vào tuyến đường này không
+  // Check if user has the required role to access this route
   if (allowedRoles && allowedRoles.length > 0 && (!userRole || !allowedRoles.includes(userRole))) {
-    console.log(`Chuyển hướng: Người dùng có vai trò ${userRole} không có quyền truy cập vào tuyến đường yêu cầu vai trò ${allowedRoles.join(', ')}`);
+    console.error(`Access denied: User with role ${userRole} attempting to access route requiring roles ${allowedRoles.join(', ')}`);
     
-    toast.error(`Bạn không có quyền truy cập vào trang này với vai trò ${userRole === 'student' ? 'Học sinh' : 'Giáo viên'}`);
+    toast.error(`Bạn không có quyền truy cập với vai trò ${userRole === 'student' ? 'Học sinh' : 'Giáo viên'}`);
     
-    // Chuyển hướng học sinh đến dashboard khi họ cố gắng truy cập các tuyến đường chỉ dành cho giáo viên
+    // Redirect students to dashboard when they try to access teacher-only routes
     return <Navigate to="/dashboard" replace />;
   }
 

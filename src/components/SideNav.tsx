@@ -14,7 +14,9 @@ import { useAuth } from './AuthProvider';
 
 const SideNav = () => {
   const location = useLocation();
-  const { userRole, signOut } = useAuth();
+  const { userRole, signOut, userName } = useAuth();
+  
+  console.log('SideNav - Current User Role:', userRole);
   
   const isActive = (path: string) => location.pathname === path;
   
@@ -66,6 +68,9 @@ const SideNav = () => {
     <div className="w-64 h-screen bg-system-blue flex flex-col fixed left-0 top-0">
       <div className="p-4 border-b border-sidebar-border">
         <h1 className="text-2xl font-bold text-white">Hệ thống</h1>
+        <p className="text-sm text-white/80">
+          {userRole === 'teacher' ? 'Giáo viên' : userRole === 'student' ? 'Học sinh' : 'Người dùng'}
+        </p>
       </div>
       
       <div className="flex-1 py-4 overflow-y-auto">
