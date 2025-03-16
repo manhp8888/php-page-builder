@@ -55,7 +55,7 @@ const LoginForm = ({
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         <Mail className="mr-2" />
-        {isLoading ? 'Đang xử lý...' : 'Đăng nhập với Email'}
+        {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
       </Button>
     </form>
   );

@@ -42,89 +42,39 @@ export function useAuthForm(isSignUp: boolean) {
     setError(null);
 
     try {
-      if (isSignUp) {
-        // Signup new user
-        console.log('Attempting to sign up with:', { 
-          email: formData.email, 
-          role: formData.role, 
-          fullName: formData.fullName 
-        });
-        
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName,
-              role: formData.role
-            }
-          }
-        });
-        
-        if (signUpError) {
-          console.error('Sign-up error:', signUpError);
-          throw signUpError;
-        }
-        
-        console.log('Sign-up successful:', signUpData);
-        
-        // If signup successful, update user profile with role
-        if (signUpData.user) {
-          console.log('Updating profile for user:', signUpData.user.id);
-          
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({ 
-              id: signUpData.user.id,
-              role: formData.role,
-              full_name: formData.fullName 
-            });
-            
-          if (profileError) {
-            console.error('Profile update error:', profileError);
-            toast.error('Đã đăng ký nhưng không thể cập nhật hồ sơ: ' + profileError.message);
-          } else {
-            console.log('Profile updated successfully with role:', formData.role);
-          }
-        }
-        
-        toast.success('Đăng ký thành công! Vui lòng đăng nhập.');
-        return true;
-      } else {
-        // Login
-        console.log('Attempting to sign in with:', { email: formData.email });
-        
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password
-        });
-        
-        if (error) {
-          console.error('Sign-in error:', error);
-          throw error;
-        }
-        
-        console.log('Sign-in successful:', data);
-        
-        // Fetch user profile to verify role
-        if (data.user) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', data.user.id)
-            .single();
-            
-          if (profileError) {
-            console.error('Error fetching user role after login:', profileError);
-          } else {
-            console.log('User role from login:', profileData.role);
-          }
-        }
-        
-        toast.success('Đăng nhập thành công!');
-        navigate('/dashboard');
-        return true;
+      // Login only
+      console.log('Attempting to sign in with:', { email: formData.email });
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password
+      });
+      
+      if (error) {
+        console.error('Sign-in error:', error);
+        throw error;
       }
+      
+      console.log('Sign-in successful:', data);
+      
+      // Fetch user profile to verify role
+      if (data.user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (profileError) {
+          console.error('Error fetching user role after login:', profileError);
+        } else {
+          console.log('User role from login:', profileData.role);
+        }
+      }
+      
+      toast.success('Đăng nhập thành công!');
+      navigate('/dashboard');
+      return true;
     } catch (error: any) {
       console.error('Authentication error:', error);
       setError(error.message || 'Đã xảy ra lỗi trong quá trình xác thực');
