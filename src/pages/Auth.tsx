@@ -8,11 +8,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Github, Mail } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Auth = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -37,11 +39,16 @@ const Auth = () => {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       if (isSignUp) {
         // Đăng ký người dùng mới
-        console.log('Attempting to sign up with:', { email: formData.email, role: formData.role, fullName: formData.fullName });
+        console.log('Attempting to sign up with:', { 
+          email: formData.email, 
+          role: formData.role, 
+          fullName: formData.fullName 
+        });
         
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
@@ -98,11 +105,12 @@ const Auth = () => {
         }
         
         console.log('Sign-in successful:', data);
-        navigate('/dashboard');
         toast.success('Đăng nhập thành công!');
+        navigate('/dashboard');
       }
     } catch (error: any) {
       console.error('Authentication error:', error);
+      setError(error.message || 'Đã xảy ra lỗi trong quá trình xác thực');
       toast.error(error.message || 'Đã xảy ra lỗi trong quá trình xác thực');
     } finally {
       setIsLoading(false);
@@ -111,6 +119,7 @@ const Auth = () => {
 
   const handleSocialLogin = async (provider: 'github' | 'google') => {
     try {
+      setError(null);
       console.log(`Attempting to sign in with ${provider}`);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -128,6 +137,7 @@ const Auth = () => {
       console.log(`${provider} sign-in initiated:`, data);
     } catch (error: any) {
       console.error(`${provider} auth error:`, error);
+      setError(error.message || `Đăng nhập bằng ${provider} không thành công`);
       toast.error(error.message || `Đăng nhập bằng ${provider} không thành công`);
     }
   };
@@ -139,6 +149,12 @@ const Auth = () => {
           <h2 className="text-2xl font-bold">{isSignUp ? 'Đăng ký tài khoản' : 'Đăng nhập'}</h2>
           <p className="text-muted-foreground mt-2">Hệ thống quản lý hoạt động ngoại khóa</p>
         </div>
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         <form onSubmit={handleEmailAuth} className="space-y-6">
           {isSignUp && (
@@ -220,6 +236,7 @@ const Auth = () => {
             variant="outline"
             className="w-full"
             onClick={() => handleSocialLogin('github')}
+            disabled={isLoading}
           >
             <Github className="mr-2" />
             Github
@@ -230,7 +247,10 @@ const Auth = () => {
           <button
             type="button"
             className="text-sm text-muted-foreground hover:text-foreground"
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError(null);
+            }}
           >
             {isSignUp ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký'}
           </button>

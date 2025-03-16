@@ -2,15 +2,16 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   userRole: string | null;
-  signOut: () => Promise<void>;
   userName: string | null;
+  signOut: () => Promise<void>;
+  session: Session | null;
 }
 
 const AuthContext = createContext<AuthContextType>({ 
@@ -18,11 +19,13 @@ const AuthContext = createContext<AuthContextType>({
   loading: true, 
   userRole: null,
   userName: null,
+  session: null,
   signOut: async () => {} 
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,10 +64,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const checkSession = async () => {
       try {
         console.log('Checking current session');
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('Current session:', session);
+        const { data, error } = await supabase.auth.getSession();
         
-        const currentUser = session?.user ?? null;
+        if (error) {
+          console.error('Error getting session:', error);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Current session data:', data);
+        setSession(data.session);
+        
+        const currentUser = data.session?.user ?? null;
         setUser(currentUser);
         
         if (currentUser) {
@@ -94,6 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, 'Session:', session ? 'exists' : 'null');
       
+      setSession(session);
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
@@ -103,34 +115,51 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('User profile from onAuthStateChange:', { role, fullName });
           setUserRole(role);
           setUserName(fullName);
+          
+          // If user just signed in, navigate to dashboard
+          if (event === 'SIGNED_IN') {
+            navigate('/dashboard');
+          }
         } catch (err) {
           console.error('Error fetching user profile:', err);
         }
       } else {
         setUserRole(null);
         setUserName(null);
+        
+        // If user just signed out, navigate to auth page
+        if (event === 'SIGNED_OUT') {
+          navigate('/auth');
+        }
       }
       
       setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const signOut = async () => {
     try {
       console.log('Signing out');
-      await supabase.auth.signOut();
-      navigate('/auth');
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Error signing out:', error);
+        toast.error('Đăng xuất không thành công: ' + error.message);
+        return;
+      }
+      
       toast.success('Đã đăng xuất thành công');
-    } catch (error) {
+      // No need to navigate here as the onAuthStateChange will handle it
+    } catch (error: any) {
       console.error('Error signing out:', error);
-      toast.error('Đăng xuất không thành công');
+      toast.error('Đăng xuất không thành công: ' + error.message);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, userRole, userName, signOut }}>
+    <AuthContext.Provider value={{ user, loading, userRole, userName, signOut, session }}>
       {children}
     </AuthContext.Provider>
   );
